@@ -79,10 +79,9 @@ function SaveIndicator({ status }) {
  * Solo propaga el valor al padre cuando el usuario pierde el foco (onBlur).
  * Esto evita re-renders en cascada mientras se escribe, que cerraban el acordeón.
  */
-function NoteInput({ label, value, onCommit, disabled, highlight }) {
+function NoteInput({ label, value, onCommit, disabled, highlight, ausente, onAusenteChange }) {
   const [localValue, setLocalValue] = useState(value ?? '');
 
-  // Sincroniza si el valor externo cambia (p.ej. carga inicial)
   useEffect(() => {
     setLocalValue(value ?? '');
   }, [value]);
@@ -97,25 +96,39 @@ function NoteInput({ label, value, onCommit, disabled, highlight }) {
     if (num !== value) onCommit(num);
   };
 
+  const isDisabled = disabled || ausente;
+
   const borderClass =
-    disabled ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+    isDisabled ? 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
     : highlight === 'good' ? 'bg-emerald-950/40 border-emerald-700/50 text-emerald-300 focus:border-emerald-500'
     : highlight === 'bad'  ? 'bg-red-950/40 border-red-700/50 text-red-300 focus:border-red-500'
     : 'bg-zinc-900 border-zinc-700 text-zinc-100 focus:border-sky-500 focus:bg-zinc-800';
 
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{label}</label>
+    <div className="flex flex-col gap-1 items-center">
+      {label && <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider self-start">{label}</label>}
       <input
         type="number"
         min="1" max="10" step="0.5"
-        disabled={disabled}
-        value={localValue}
+        disabled={isDisabled}
+        value={ausente ? '' : localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         onBlur={handleBlur}
         className={`w-20 px-2 py-1.5 rounded-lg text-sm font-mono text-center border transition-all outline-none ${borderClass}`}
-        placeholder="—"
+        placeholder={ausente ? "AUS" : "—"}
       />
+      {onAusenteChange && (
+        <label className={`flex items-center gap-1.5 mt-1 cursor-pointer select-none self-start ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <input
+            type="checkbox"
+            checked={!!ausente}
+            disabled={disabled}
+            onChange={(e) => onAusenteChange(e.target.checked)}
+            className="w-3 h-3 rounded bg-zinc-900 border-zinc-700 text-sky-500 focus:ring-sky-500 focus:ring-offset-zinc-950"
+          />
+          <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-500">Ausente</span>
+        </label>
+      )}
     </div>
   );
 }
@@ -345,23 +358,17 @@ function MateriaCard({ materia, todasLasMaterias, onUpdate }) {
           const c = todasLasMaterias.find((m) => m.id === cid);
           if (!c) return false;
           const e = calcularEstado(c, todasLasMaterias);
-          return e !== STATUS.APROBADA && e !== STATUS.REGULAR && e !== STATUS.PROMOCIONADA;
+          return e !== STATUS.APROBADA && e !== STATUS.PENDIENTE_FINAL && e !== STATUS.PROMOCIONADA;
         })
         .map((cid) => todasLasMaterias.find((m) => m.id === cid)?.name || cid)
     : [];
 
   const recupHabilitado = puedeCargarRecup(materia);
+  const recupTarget = detectarRecupTarget(materia);
 
   // Commit de nota al perder foco (no en cada tecla)
   const commitNota = (campo, valor) => {
-    const cambios = { [campo]: valor };
-    if (campo === 'notaP1' || campo === 'notaP2') {
-      const p1 = campo === 'notaP1' ? valor : materia.notaP1;
-      const p2 = campo === 'notaP2' ? valor : materia.notaP2;
-      const target = detectarRecupTarget({ ...materia, notaP1: p1, notaP2: p2 });
-      if (target) cambios.recupTarget = target;
-    }
-    onUpdate(materia.id, cambios);
+    onUpdate(materia.id, { [campo]: valor });
   };
 
   const updateFecha = (instancia, valor) => {
@@ -475,70 +482,73 @@ function MateriaCard({ materia, todasLasMaterias, onUpdate }) {
               <NoteInput
                 label="Parcial 1"
                 value={materia.notaP1}
+                ausente={materia.ausenteP1}
                 onCommit={(v) => commitNota('notaP1', v)}
+                onAusenteChange={(v) => onUpdate(materia.id, { ausenteP1: v, notaP1: null })}
                 highlight={getNoteHighlight(materia.notaP1)}
               />
               <NoteInput
                 label="Parcial 2"
                 value={materia.notaP2}
+                ausente={materia.ausenteP2}
                 onCommit={(v) => commitNota('notaP2', v)}
+                onAusenteChange={(v) => onUpdate(materia.id, { ausenteP2: v, notaP2: null })}
                 highlight={getNoteHighlight(materia.notaP2)}
               />
 
               {/* Recuperatorio */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">
-                  Recuperatorio{materia.recupTarget && (
-                    <span className="ml-1 text-amber-400 normal-case">({materia.recupTarget})</span>
-                  )}
+                  Recup.{recupTarget ? ` (${recupTarget})` : ''}
                 </label>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-start h-full">
                   <NoteInput
                     label=""
                     value={materia.notaRecup}
+                    ausente={materia.ausenteRecup}
                     onCommit={(v) => commitNota('notaRecup', v)}
+                    onAusenteChange={(v) => onUpdate(materia.id, { ausenteRecup: v, notaRecup: null })}
                     disabled={!recupHabilitado}
                     highlight={getNoteHighlight(materia.notaRecup)}
                   />
-                  {recupHabilitado && (
-                    <select
-                      value={materia.recupTarget || ''}
-                      onChange={(e) => onUpdate(materia.id, { recupTarget: e.target.value || null })}
-                      className="px-2 py-1.5 rounded-lg text-sm border bg-zinc-900 border-zinc-700 text-zinc-300
-                        focus:border-amber-500 outline-none transition-all [color-scheme:dark]"
-                    >
-                      <option value="">¿Cuál?</option>
-                      {(materia.notaP1 === null || materia.notaP1 < 7) && <option value="P1">Recup. P1</option>}
-                      {(materia.notaP2 === null || materia.notaP2 < 7) && <option value="P2">Recup. P2</option>}
-                    </select>
-                  )}
                 </div>
-                {!recupHabilitado && materia.notaP1 !== null && materia.notaP2 !== null
-                  && materia.notaP1 < 4 && materia.notaP2 < 4 && (
-                  <p className="text-xs text-red-400 mt-1">Ambos desaprobados → Libre directo</p>
+                {!recupHabilitado && (materia.notaP1 !== null || materia.ausenteP1) && (materia.notaP2 !== null || materia.ausenteP2)
+                  && !puedeCargarRecup(materia) && ((materia.notaP1 !== null && materia.notaP1 < 4) || materia.ausenteP1) && ((materia.notaP2 !== null && materia.notaP2 < 4) || materia.ausenteP2) && (
+                  <p className="text-xs text-red-400 mt-1">Libre directo</p>
                 )}
               </div>
 
-              {/* Final */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Final</label>
-                <label className="flex items-center gap-2 cursor-pointer mt-1">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={materia.finalAprobado || false}
-                      onChange={(e) => onUpdate(materia.id, { finalAprobado: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-6 bg-zinc-800 border border-zinc-700 rounded-full
-                      peer-checked:bg-emerald-600 peer-checked:border-emerald-500 transition-all" />
-                    <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-zinc-400 rounded-full transition-all
-                      peer-checked:translate-x-4 peer-checked:bg-white" />
-                  </div>
-                  <span className={`text-sm font-medium transition-colors ${materia.finalAprobado ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                    {materia.finalAprobado ? 'Aprobado ✓' : 'Pendiente'}
-                  </span>
-                </label>
+              {/* Finales (3 llamados) */}
+              <div className="flex flex-col gap-1 pl-4 border-l border-zinc-800">
+                <label className="text-xs text-zinc-500 font-medium uppercase tracking-wider mb-2">Llamados a Final</label>
+                <div className="flex gap-4">
+                  <NoteInput
+                    label="#1"
+                    value={materia.notaF1}
+                    ausente={materia.ausenteF1}
+                    onCommit={(v) => commitNota('notaF1', v)}
+                    onAusenteChange={(v) => onUpdate(materia.id, { ausenteF1: v, notaF1: null })}
+                    highlight={getNoteHighlight(materia.notaF1)}
+                  />
+                  <NoteInput
+                    label="#2"
+                    value={materia.notaF2}
+                    ausente={materia.ausenteF2}
+                    onCommit={(v) => commitNota('notaF2', v)}
+                    onAusenteChange={(v) => onUpdate(materia.id, { ausenteF2: v, notaF2: null })}
+                    disabled={materia.notaF1 === null && !materia.ausenteF1}
+                    highlight={getNoteHighlight(materia.notaF2)}
+                  />
+                  <NoteInput
+                    label="#3"
+                    value={materia.notaF3}
+                    ausente={materia.ausenteF3}
+                    onCommit={(v) => commitNota('notaF3', v)}
+                    onAusenteChange={(v) => onUpdate(materia.id, { ausenteF3: v, notaF3: null })}
+                    disabled={materia.notaF2 === null && !materia.ausenteF2}
+                    highlight={getNoteHighlight(materia.notaF3)}
+                  />
+                </div>
               </div>
             </div>
           </div>

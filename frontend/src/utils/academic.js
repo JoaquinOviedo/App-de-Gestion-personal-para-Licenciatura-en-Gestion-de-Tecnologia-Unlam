@@ -10,188 +10,189 @@ export const STATUS = {
   BLOQUEADA: 'BLOQUEADA',
   PENDIENTE: 'PENDIENTE',
   EN_CURSO: 'EN_CURSO',
-  REGULAR: 'REGULAR',
+  PENDIENTE_RECUP: 'PENDIENTE_RECUP',
+  PENDIENTE_FINAL: 'PENDIENTE_FINAL',
   PROMOCIONADA: 'PROMOCIONADA',
   APROBADA: 'APROBADA',
   LIBRE: 'LIBRE',
 };
 
-// =====================================================================
-// A) CALCULAR ESTADO DE UNA MATERIA
-// =====================================================================
+// Helper interno para obtener nota efectiva considerando ausentes
+function getVal(nota, ausente) {
+  if (ausente) return 0;
+  return nota;
+}
 
-/**
- * Determina si una materia está desbloqueada (correlativas cumplidas).
- * Una correlativa está cumplida si su estado es APROBADA, PROMOCIONADA o REGULAR.
- */
 export function correlativasCumplidas(materia, todasLasMaterias) {
   if (!materia.correlatives || materia.correlatives.length === 0) return true;
   return materia.correlatives.every((corrId) => {
     const corr = todasLasMaterias.find((m) => m.id === corrId);
     if (!corr) return false;
     const estado = calcularEstado(corr, todasLasMaterias);
-    return estado === STATUS.APROBADA || estado === STATUS.REGULAR || estado === STATUS.PROMOCIONADA;
+    return estado === STATUS.APROBADA || estado === STATUS.PENDIENTE_FINAL || estado === STATUS.PROMOCIONADA;
   });
 }
 
-/**
- * Calcula el estado académico de una materia.
- * `enCursoManual`: permite marcar manualmente una materia como "En Curso"
- * antes de tener notas cargadas.
- */
 export function calcularEstado(materia, todasLasMaterias) {
-  const { notaP1, notaP2, notaRecup, recupTarget, finalAprobado, enCursoManual } = materia;
+  const { 
+    notaP1, ausenteP1, 
+    notaP2, ausenteP2, 
+    notaRecup, ausenteRecup, 
+    notaF1, ausenteF1,
+    notaF2, ausenteF2,
+    notaF3, ausenteF3,
+    enCursoManual 
+  } = materia;
 
-  // 1. APROBADA: Final aprobado
-  if (finalAprobado) return STATUS.APROBADA;
+  // 1. Aprobación por finales
+  const f1 = getVal(notaF1, ausenteF1);
+  const f2 = getVal(notaF2, ausenteF2);
+  const f3 = getVal(notaF3, ausenteF3);
+  
+  if (f1 >= 4 || f2 >= 4 || f3 >= 4) return STATUS.APROBADA;
 
-  // ---- Determinar notas efectivas (considerando recuperatorio) ----
-  let efectivaP1 = notaP1;
-  let efectivaP2 = notaP2;
-  const fueARecup = notaRecup !== null && notaRecup !== undefined;
+  // Si consumió los 3 llamados y desaprobó/faltó a todos, queda Libre
+  const hasF1 = notaF1 !== null || ausenteF1;
+  const hasF2 = notaF2 !== null || ausenteF2;
+  const hasF3 = notaF3 !== null || ausenteF3;
 
-  if (fueARecup && recupTarget === 'P1') efectivaP1 = notaRecup;
-  if (fueARecup && recupTarget === 'P2') efectivaP2 = notaRecup;
-
-  // 2. LIBRE / RECURSAR
-  // 2a. Ambos parciales desaprobados
-  if (notaP1 !== null && notaP2 !== null && notaP1 < 4 && notaP2 < 4) {
+  if (hasF1 && hasF2 && hasF3 && f1 < 4 && f2 < 4 && f3 < 4) {
     return STATUS.LIBRE;
   }
-  // 2b. Fue a recuperatorio y sacó menos de 4
-  if (fueARecup && notaRecup < 4) {
-    return STATUS.LIBRE;
-  }
 
-  // 3. BLOQUEADA: correlativas no cumplidas
+  // 2. Bloqueada
   if (!correlativasCumplidas(materia, todasLasMaterias)) {
     return STATUS.BLOQUEADA;
   }
 
-  // 4. Sin notas cargadas
-  if (notaP1 === null && notaP2 === null) {
-    // Toggle manual "Cursando" activa el estado EN_CURSO sin necesidad de notas
-    if (enCursoManual) return STATUS.EN_CURSO;
-    return STATUS.PENDIENTE;
+  const p1 = getVal(notaP1, ausenteP1);
+  const p2 = getVal(notaP2, ausenteP2);
+  const rec = getVal(notaRecup, ausenteRecup);
+
+  const hasP1 = notaP1 !== null || ausenteP1;
+  const hasP2 = notaP2 !== null || ausenteP2;
+  const fueARecup = notaRecup !== null || ausenteRecup;
+
+  // 3. Sin notas cargadas
+  if (!hasP1 && !hasP2) {
+    return enCursoManual ? STATUS.EN_CURSO : STATUS.PENDIENTE;
   }
 
-  // 5. EN CURSO: Solo P1 cargada (y P2 no cargada, sin recup)
-  if (notaP1 !== null && notaP2 === null && !fueARecup) {
+  // 4. Solo P1 cargada
+  if (hasP1 && !hasP2 && !fueARecup) {
     return STATUS.EN_CURSO;
   }
 
-  // 6. Con ambas notas efectivas disponibles
-  if (efectivaP1 !== null && efectivaP2 !== null) {
+  // 5. Con ambas notas cargadas
+  if (hasP1 && hasP2) {
+    let efectivaP1 = p1;
+    let efectivaP2 = p2;
+    const recupTarget = detectarRecupTarget(materia);
+
+    if (fueARecup && recupTarget === 'P1') efectivaP1 = rec;
+    if (fueARecup && recupTarget === 'P2') efectivaP2 = rec;
+
+    // Libre directo si ambas son < 4
+    if (p1 < 4 && p2 < 4) return STATUS.LIBRE;
+
+    // Libre si el recup está aplazado
+    if (fueARecup && rec < 4) return STATUS.LIBRE;
+
     const ambasAprobadas = efectivaP1 >= 4 && efectivaP2 >= 4;
 
     if (!ambasAprobadas) {
-      if (!fueARecup) return STATUS.EN_CURSO; // esperando recuperatorio
+      if (!fueARecup) return STATUS.PENDIENTE_RECUP; 
       return STATUS.LIBRE;
     }
 
     // Ambas aprobadas (>=4)
-    // PROMOCIONADA: Si ambas notas efectivas (incluyendo recup) son >= 7
     if (efectivaP1 >= 7 && efectivaP2 >= 7) {
       return STATUS.PROMOCIONADA;
     }
 
-    // Ambas >= 4 pero al menos una es < 7
     if (!fueARecup) {
-      // Como tiene derecho a subir de nota para promocionar, sigue "En Curso" (Pendiente de recup)
-      return STATUS.EN_CURSO;
+      // Tiene derecho a recuperar si una es >= 7 y la otra es < 7
+      if ((efectivaP1 >= 7 && efectivaP2 < 7) || (efectivaP2 >= 7 && efectivaP1 < 7)) {
+        return STATUS.PENDIENTE_RECUP;
+      }
+      // Si ambas son < 7 (ej 5 y 6), no hay beneficio en recuperar, va directo a final
+      return STATUS.PENDIENTE_FINAL;
     }
 
-    // Ya fue a recuperatorio y sacó entre 4 y 6 -> queda Regular (Pendiente de final)
-    return STATUS.REGULAR;
+    // Ya fue a recup y sacó entre 4 y 6
+    return STATUS.PENDIENTE_FINAL;
   }
 
   return STATUS.PENDIENTE;
 }
 
-// =====================================================================
-// B) REGLA DEL RECUPERATORIO
-// =====================================================================
-
-/**
- * Determina si el input de recuperatorio debe estar habilitado.
- * Solo se habilita si EXACTAMENTE UN parcial está desaprobado (<4).
- */
 export function puedeCargarRecup(materia) {
-  const { notaP1, notaP2, notaRecup } = materia;
-  if (notaP1 === null || notaP2 === null) return false;
-  if (notaRecup !== null) return true;
-  const p1Desap = notaP1 < 4;
-  const p2Desap = notaP2 < 4;
-  // Si ambos están desaprobados -> Libre (no hay recup posible)
-  if (p1Desap && p2Desap) return false;
-  // Si ambos están promocionados (>= 7), no hay nada que recuperar
-  if (notaP1 >= 7 && notaP2 >= 7) return false;
+  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
+  const fueARecup = materia.notaRecup !== null || materia.ausenteRecup;
+
+  if (!hasP1 || !hasP2) return false;
+  if (fueARecup) return true;
+
+  const p1 = getVal(materia.notaP1, materia.ausenteP1);
+  const p2 = getVal(materia.notaP2, materia.ausenteP2);
+
+  if (p1 < 4 && p2 < 4) return false; // Libre
+  if (p1 >= 7 && p2 >= 7) return false; // Promocionada
+  if (p1 >= 4 && p1 < 7 && p2 >= 4 && p2 < 7) return false; // Va a final directo
+
   return true;
 }
 
-/**
- * Devuelve qué parcial se debería recuperar basado en cuál está desaprobado.
- */
 export function detectarRecupTarget(materia) {
-  const { notaP1, notaP2 } = materia;
-  if (notaP1 === null || notaP2 === null) return null;
-  if (notaP1 < 4 && notaP2 >= 4) return 'P1';
-  if (notaP2 < 4 && notaP1 >= 4) return 'P2';
-  if (notaP1 < 7 && notaP2 >= 7) return 'P1';
-  if (notaP2 < 7 && notaP1 >= 7) return 'P2';
+  const p1 = getVal(materia.notaP1, materia.ausenteP1);
+  const p2 = getVal(materia.notaP2, materia.ausenteP2);
+
+  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
+
+  if (!hasP1 || !hasP2) return null;
+
+  if (p1 < 4 && p2 >= 4) return 'P1';
+  if (p2 < 4 && p1 >= 4) return 'P2';
+  
+  if (p1 < 7 && p2 >= 7) return 'P1';
+  if (p2 < 7 && p1 >= 7) return 'P2';
+  
   return null;
 }
 
-// =====================================================================
-// C) PEOR DE LOS CASOS
-// =====================================================================
-
-/**
- * Calcula cuántos exámenes le quedan a una materia en el peor de los casos.
- */
 export function examenesRestantesPeorCaso(materia, todasLasMaterias) {
   const estado = calcularEstado(materia, todasLasMaterias);
-  const { notaP1, notaP2 } = materia;
+  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
 
   switch (estado) {
     case STATUS.APROBADA:
     case STATUS.PROMOCIONADA:
       return { total: 0, parciales: 0, recups: 0, finales: 0 };
 
-    case STATUS.REGULAR:
+    case STATUS.PENDIENTE_FINAL:
       return { total: 1, parciales: 0, recups: 0, finales: 1 };
 
     case STATUS.LIBRE:
-      return { total: 3, parciales: 2, recups: 0, finales: 1 };
-
     case STATUS.PENDIENTE:
     case STATUS.BLOQUEADA:
       return { total: 3, parciales: 2, recups: 0, finales: 1 };
 
+    case STATUS.PENDIENTE_RECUP:
+      return { total: 2, parciales: 0, recups: 1, finales: 1 };
+
     case STATUS.EN_CURSO: {
-      // Marcada manualmente sin notas → misma lógica que pendiente
-      if (notaP1 === null && notaP2 === null) {
-        return { total: 3, parciales: 2, recups: 0, finales: 1 };
-      }
-      // Tiene P1 cargada, P2 no
-      if (notaP1 !== null && notaP2 === null) {
-        return { total: 2, parciales: 1, recups: 0, finales: 1 };
-      }
-      // Tiene P1 y P2, uno desaprobado (esperando recup)
-      if (notaP1 !== null && notaP2 !== null) {
-        return { total: 2, parciales: 0, recups: 1, finales: 1 };
-      }
-      return { total: 2, parciales: 1, recups: 0, finales: 1 };
+      if (!hasP1 && !hasP2) return { total: 3, parciales: 2, recups: 0, finales: 1 };
+      if (hasP1 && !hasP2) return { total: 2, parciales: 1, recups: 0, finales: 1 };
+      return { total: 3, parciales: 2, recups: 0, finales: 1 };
     }
 
     default:
       return { total: 3, parciales: 2, recups: 0, finales: 1 };
   }
 }
-
-// =====================================================================
-// D) ESTADÍSTICAS GLOBALES
-// =====================================================================
 
 export function calcularEstadisticas(materias) {
   const total = materias.length;
@@ -220,8 +221,9 @@ export function calcularEstadisticas(materias) {
     switch (estado) {
       case STATUS.APROBADA: aprobadas++; break;
       case STATUS.PROMOCIONADA: promocionadas++; aprobadas++; break;
-      case STATUS.REGULAR: regulares++; break;
-      case STATUS.EN_CURSO: enCurso++; break;
+      case STATUS.PENDIENTE_FINAL: regulares++; break;
+      case STATUS.EN_CURSO: 
+      case STATUS.PENDIENTE_RECUP: enCurso++; break;
       case STATUS.PENDIENTE: pendientes++; break;
       case STATUS.BLOQUEADA: bloqueadas++; break;
       case STATUS.LIBRE: libres++; break;
@@ -241,10 +243,6 @@ export function calcularEstadisticas(materias) {
     },
   };
 }
-
-// =====================================================================
-// E) COLORES Y ETIQUETAS POR ESTADO
-// =====================================================================
 
 export const STATUS_CONFIG = {
   [STATUS.BLOQUEADA]: {
@@ -271,13 +269,21 @@ export const STATUS_CONFIG = {
     badge: 'bg-sky-900/60 text-sky-300',
     dot: 'bg-sky-400',
   },
-  [STATUS.REGULAR]: {
-    label: 'Regular (Debe Final)',
-    color: 'text-amber-300',
-    bg: 'bg-amber-950/30',
+  [STATUS.PENDIENTE_RECUP]: {
+    label: 'Pend. Recuperatorio',
+    color: 'text-amber-400',
+    bg: 'bg-amber-950/40',
     border: 'border-amber-700/50',
-    badge: 'bg-amber-900/50 text-amber-300',
+    badge: 'bg-amber-900/60 text-amber-300',
     dot: 'bg-amber-400',
+  },
+  [STATUS.PENDIENTE_FINAL]: {
+    label: 'Pendiente Final',
+    color: 'text-orange-300',
+    bg: 'bg-orange-950/30',
+    border: 'border-orange-700/50',
+    badge: 'bg-orange-900/50 text-orange-300',
+    dot: 'bg-orange-400',
   },
   [STATUS.PROMOCIONADA]: {
     label: 'Promocionada',
@@ -305,9 +311,6 @@ export const STATUS_CONFIG = {
   },
 };
 
-/**
- * Devuelve todas las fechas de todas las materias ordenadas cronológicamente.
- */
 export function obtenerFechasOrdenadas(materias) {
   const INSTANCIA_LABELS = {
     p1: 'Parcial 1',
@@ -336,9 +339,6 @@ export function obtenerFechasOrdenadas(materias) {
   return fechas;
 }
 
-/**
- * Devuelve un mapa { 'YYYY-MM-DD': [eventos] } para usar en el calendario.
- */
 export function obtenerEventosPorFecha(materias) {
   const INSTANCIA_META = {
     p1:    { label: 'Parcial 1',       color: 'sky'    },
