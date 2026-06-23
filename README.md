@@ -1,86 +1,57 @@
-# Mi Carrera Tech 🎓
-### Gestor Local — Licenciatura en Gestión de Tecnología
+# Mi Carrera Tech — Gestión de Tecnología (UNLaM)
 
-Aplicación web de uso local para gestionar el progreso académico de la carrera.
-Funciona como software de escritorio: backend Node.js/Express + frontend React/Tailwind, todo corriendo en `localhost`.
+**Mi Carrera Tech** es una aplicación web local de código abierto diseñada para ayudar a los estudiantes de la Licenciatura en Gestión de Tecnología (Universidad Nacional de La Matanza) a gestionar sus materias, fechas de exámenes, progreso y notas a lo largo de la carrera.
 
 ---
 
-## 🚀 Instalación y primer uso
+## 🚀 Características Principales
 
-### Paso 1: Compilar el frontend (solo la primera vez)
-```
-compilar_frontend.bat
-```
-Este script instala las dependencias de React/Tailwind y genera la carpeta `frontend/dist/`.
-
-### Paso 2: Lanzar la aplicación
-```
-iniciar_app.bat
-```
-- Instala dependencias del backend (solo la primera vez).
-- Inicia el servidor Express en `http://localhost:3000`.
-- Abre el navegador automáticamente.
+- **Dashboard de Progreso:** Visualizá rápidamente tu porcentaje de avance, cantidad de materias aprobadas y exámenes restantes (parciales, finales, y recuperatorios previstos).
+- **Plan de Estudios Interactivo:** Consultá todas las materias año por año. Registrá tus notas, marcá materias "En Curso" de manera manual y controlá qué correlativas te faltan para destrabar una materia bloqueada.
+- **Calendario Visual:** Una vista mensual que resalta los días donde tenés parciales, recuperatorios y finales. Además incluye una sección de los "Próximos exámenes".
+- **Gestión Local Privada:** Tus datos son totalmente tuyos. Todo se guarda localmente en un archivo `materias.json` que no se sube a la nube ni se comparte. Podés hacer backups descargando el archivo y restaurarlo cuando quieras.
 
 ---
 
-## 📁 Estructura del proyecto
+## 🛠️ Tecnologías Utilizadas
 
-```
-mi-carrera-tech/
-├── materias.json            ← Base de datos (se edita automáticamente)
-├── iniciar_app.bat          ← 🟢 LANZADOR PRINCIPAL
-├── compilar_frontend.bat    ← 🔧 Compilar el frontend (primera vez)
-│
-├── backend/
-│   ├── server.js            ← Servidor Express (API + sirve frontend)
-│   └── package.json
-│
-└── frontend/
-    ├── src/
-    │   ├── App.jsx          ← Componente principal (3 tabs)
-    │   ├── main.jsx
-    │   ├── index.css
-    │   └── utils/
-    │       └── academic.js  ← Motor de lógica académica
-    ├── index.html
-    ├── vite.config.js
-    ├── tailwind.config.js
-    └── package.json
-```
+- **Frontend:** React + Tailwind CSS (empaquetado con Vite).
+- **Backend:** Node.js + Express (una API ultra ligera encargada exclusivamente de leer y persistir los datos en el sistema de archivos).
+- **Arquitectura:** Aplicación pensada para funcionar Offline y de uso netamente personal (Desktop-like).
 
 ---
 
-## 🧠 Lógica de estados
+## 📥 Instalación y Uso (Primeros Pasos)
 
-| Estado | Condición |
-|--------|-----------|
-| 🔒 **Bloqueada** | Correlativa sin aprobar/regularizar |
-| ⏳ **Pendiente** | Sin notas cargadas |
-| 📖 **En Curso** | Solo P1 cargada |
-| 🟡 **Regular** | Ambas notas ≥ 4 (no promociona) |
-| 🟣 **Promocionada** | P1 ≥ 7 Y P2 ≥ 7 (sin ir a recup) |
-| ✅ **Aprobada** | Promocionada o Final aprobado |
-| ❌ **Libre** | Ambas < 4, o Recup < 4 |
+1. **Clonar el repositorio:**
+   Si tenés Git instalado, abrí tu terminal y ejecutá:
+   ```bash
+   git clone https://github.com/JoaquinOviedo/App-de-Gestion-personal-para-Licenciatura-en-Gestion-de-Tecnologia-Unlam.git
+   ```
+
+2. **Requisitos Previos:**
+   Asegurate de tener [Node.js](https://nodejs.org/) instalado en tu computadora.
+
+3. **Ejecutar la App:**
+   Entrá a la carpeta del proyecto descargado y hacé **doble click en el archivo `iniciar_app.bat`**.
+   
+   > 💡 **Nota:** La primera vez que ejecutes este archivo, instalará todas las dependencias necesarias de manera automática. Luego de eso, levantará el servidor en `http://localhost:3000` y el frontend. 
+
+### 🛡️ Base de Datos por Defecto y Actualizaciones Seguras
+
+**Tu información está a salvo.**
+- **Por defecto:** Al abrir la app por primera vez, el sistema detecta si no tenés el archivo `materias.json`. Si no lo tenés, te creará automáticamente la plantilla con todo el plan de estudios por defecto para que comiences a usarla al instante.
+- **Actualizaciones (`git pull`):** Cada vez que abras `iniciar_app.bat`, el script buscará si hay actualizaciones nuevas en este repositorio y las descargará. **Tus datos nunca se perderán**, ya que el archivo `materias.json` está totalmente ignorado por Git (`.gitignore`) y el sistema nunca lo sobrescribe si ya existe. ¡Tus notas siempre estarán seguras!
 
 ---
 
-## 💾 Datos
+## 🛠️ Contribuir (Modo Desarrollador)
 
-Los datos se guardan automáticamente en `materias.json` cada vez que se modifica un campo.
-Usa la tab **Base de Datos** para hacer backups y restaurarlos.
+Si querés hacer cambios al código (interfaz, colores, etc):
+1. Modificá los archivos dentro de la carpeta `frontend/src`.
+2. Hacé **doble click en `compilar_frontend.bat`**. Esto construirá la nueva versión de producción del sitio.
+3. Finalmente abrí `iniciar_app.bat` para ver tus cambios reflejados.
 
 ---
 
-## 🛠️ Modo desarrollo (opcional)
-
-Si querés editar el frontend en tiempo real:
-
-```bash
-# Terminal 1: Backend
-cd backend && npm install && node server.js
-
-# Terminal 2: Frontend (hot-reload)
-cd frontend && npm install && npm run dev
-```
-El frontend de desarrollo corre en `http://localhost:5173` y hace proxy al backend en `:3000`.
+> App creada como herramienta de productividad para facilitar la vida del estudiante. ¡Éxitos en la carrera! 🎓
