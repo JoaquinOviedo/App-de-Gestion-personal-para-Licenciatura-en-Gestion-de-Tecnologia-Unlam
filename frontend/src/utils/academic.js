@@ -117,6 +117,8 @@ export function puedeCargarRecup(materia) {
   const p2Desap = notaP2 < 4;
   // Si ambos están desaprobados -> Libre (no hay recup posible)
   if (p1Desap && p2Desap) return false;
+  // Si ambos están promocionados (>= 7), no hay nada que recuperar
+  if (notaP1 >= 7 && notaP2 >= 7) return false;
   return true;
 }
 

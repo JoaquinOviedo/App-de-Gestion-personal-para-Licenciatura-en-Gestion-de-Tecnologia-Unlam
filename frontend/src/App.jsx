@@ -508,8 +508,8 @@ function MateriaCard({ materia, todasLasMaterias, onUpdate }) {
                         focus:border-amber-500 outline-none transition-all [color-scheme:dark]"
                     >
                       <option value="">¿Cuál?</option>
-                      <option value="P1">Recup. P1</option>
-                      <option value="P2">Recup. P2</option>
+                      {(materia.notaP1 === null || materia.notaP1 < 7) && <option value="P1">Recup. P1</option>}
+                      {(materia.notaP2 === null || materia.notaP2 < 7) && <option value="P2">Recup. P2</option>}
                     </select>
                   )}
                 </div>
