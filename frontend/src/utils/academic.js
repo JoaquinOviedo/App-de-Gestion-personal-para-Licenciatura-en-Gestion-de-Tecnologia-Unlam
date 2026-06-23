@@ -90,11 +90,18 @@ export function calcularEstado(materia, todasLasMaterias) {
     }
 
     // Ambas aprobadas (>=4)
-    // PROMOCIONADA: Solo si NO fue a recuperatorio y ambas >= 7
-    if (!fueARecup && efectivaP1 >= 7 && efectivaP2 >= 7) {
+    // PROMOCIONADA: Si ambas notas efectivas (incluyendo recup) son >= 7
+    if (efectivaP1 >= 7 && efectivaP2 >= 7) {
       return STATUS.PROMOCIONADA;
     }
 
+    // Ambas >= 4 pero al menos una es < 7
+    if (!fueARecup) {
+      // Como tiene derecho a subir de nota para promocionar, sigue "En Curso" (Pendiente de recup)
+      return STATUS.EN_CURSO;
+    }
+
+    // Ya fue a recuperatorio y sacó entre 4 y 6 -> queda Regular (Pendiente de final)
     return STATUS.REGULAR;
   }
 
