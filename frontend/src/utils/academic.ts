@@ -74,9 +74,9 @@ export function calcularEstado(materia: Materia, todasLasMaterias: Materia[]): S
   if (f1 >= 4 || f2 >= 4 || f3 >= 4) return STATUS.APROBADA;
 
   // Si consumió los 3 llamados y desaprobó/faltó a todos → Libre
-  const hasF1 = notaF1 !== null || ausenteF1;
-  const hasF2 = notaF2 !== null || ausenteF2;
-  const hasF3 = notaF3 !== null || ausenteF3;
+  const hasF1 = notaF1 != null || ausenteF1;
+  const hasF2 = notaF2 != null || ausenteF2;
+  const hasF3 = notaF3 != null || ausenteF3;
 
   if (hasF1 && hasF2 && hasF3 && f1 < 4 && f2 < 4 && f3 < 4) {
     return STATUS.LIBRE;
@@ -91,9 +91,9 @@ export function calcularEstado(materia: Materia, todasLasMaterias: Materia[]): S
   const p2 = getVal(notaP2, ausenteP2);
   const rec = getVal(notaRecup, ausenteRecup);
 
-  const hasP1 = notaP1 !== null || ausenteP1;
-  const hasP2 = notaP2 !== null || ausenteP2;
-  const fueARecup = notaRecup !== null || ausenteRecup;
+  const hasP1 = notaP1 != null || ausenteP1;
+  const hasP2 = notaP2 != null || ausenteP2;
+  const fueARecup = notaRecup != null || ausenteRecup;
 
   // 3. Sin notas cargadas
   if (!hasP1 && !hasP2) {
@@ -155,9 +155,9 @@ export function calcularEstado(materia: Materia, todasLasMaterias: Materia[]): S
 }
 
 export function puedeCargarRecup(materia: Materia): boolean {
-  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
-  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
-  const fueARecup = materia.notaRecup !== null || materia.ausenteRecup;
+  const hasP1 = materia.notaP1 != null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 != null || materia.ausenteP2;
+  const fueARecup = materia.notaRecup != null || materia.ausenteRecup;
 
   if (!hasP1 || !hasP2) return false;
   if (fueARecup) return true;
@@ -176,8 +176,8 @@ export function detectarRecupTarget(materia: Materia): 'P1' | 'P2' | null {
   const p1 = getVal(materia.notaP1, materia.ausenteP1);
   const p2 = getVal(materia.notaP2, materia.ausenteP2);
 
-  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
-  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
+  const hasP1 = materia.notaP1 != null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 != null || materia.ausenteP2;
 
   if (!hasP1 || !hasP2) return null;
 
@@ -208,7 +208,7 @@ export function calcularNotaFinal(materia: Materia, todasLasMaterias: Materia[])
     const p1 = getVal(materia.notaP1, materia.ausenteP1);
     const p2 = getVal(materia.notaP2, materia.ausenteP2);
     const rec = getVal(materia.notaRecup, materia.ausenteRecup);
-    const fueARecup = materia.notaRecup !== null || materia.ausenteRecup;
+    const fueARecup = materia.notaRecup != null || materia.ausenteRecup;
     
     let efectivaP1 = p1;
     let efectivaP2 = p2;
@@ -226,8 +226,8 @@ export function calcularNotaFinal(materia: Materia, todasLasMaterias: Materia[])
 
 export function examenesRestantesPeorCaso(materia: Materia, todasLasMaterias: Materia[]): ExamenesRestantes {
   const estado = calcularEstado(materia, todasLasMaterias);
-  const hasP1 = materia.notaP1 !== null || materia.ausenteP1;
-  const hasP2 = materia.notaP2 !== null || materia.ausenteP2;
+  const hasP1 = materia.notaP1 != null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 != null || materia.ausenteP2;
 
   switch (estado) {
     case STATUS.APROBADA:
