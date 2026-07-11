@@ -22,4 +22,3 @@ echo  [OK] Servidor iniciando en http://localhost:3000
 echo  [INFO] El navegador se abrira automaticamente.
 echo.
 node server.js
-pause
