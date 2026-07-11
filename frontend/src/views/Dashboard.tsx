@@ -193,7 +193,7 @@ export function Dashboard({ materias }: DashboardProps) {
         {/* Exámenes restantes */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col gap-2 col-span-2 hover:border-zinc-700 transition-colors">
           <div className="text-xs text-zinc-500 font-semibold uppercase tracking-widest flex items-center gap-2">
-            <span>⚡</span>Exámenes restantes (peor caso)
+            <span>⚡</span>Exámenes restantes (mejor caso)
           </div>
           <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-sky-400 leading-none">
             {stats.examenesRestantes.total}

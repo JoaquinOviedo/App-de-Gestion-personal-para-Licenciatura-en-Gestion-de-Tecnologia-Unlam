@@ -256,6 +256,41 @@ export function examenesRestantesPeorCaso(materia: Materia, todasLasMaterias: Ma
   }
 }
 
+/** Mejor caso: asume promoción (sin final) cuando aún es posible. */
+export function examenesRestantesMejorCaso(materia: Materia, todasLasMaterias: Materia[]): ExamenesRestantes {
+  const estado = calcularEstado(materia, todasLasMaterias);
+  const hasP1 = materia.notaP1 != null || materia.ausenteP1;
+  const hasP2 = materia.notaP2 != null || materia.ausenteP2;
+
+  switch (estado) {
+    case STATUS.APROBADA:
+    case STATUS.PROMOCIONADA:
+      return { total: 0, parciales: 0, recups: 0, finales: 0 };
+
+    case STATUS.PENDIENTE_FINAL:
+      return { total: 1, parciales: 0, recups: 0, finales: 1 };
+
+    case STATUS.LIBRE:
+    case STATUS.PENDIENTE:
+    case STATUS.BLOQUEADA:
+      // Mejor caso: promociona con 2 parciales (sin final)
+      return { total: 2, parciales: 2, recups: 0, finales: 0 };
+
+    case STATUS.PENDIENTE_RECUP:
+      // Mejor caso: aprueba recup con >= 7 y promociona
+      return { total: 1, parciales: 0, recups: 1, finales: 0 };
+
+    case STATUS.EN_CURSO: {
+      if (!hasP1 && !hasP2) return { total: 2, parciales: 2, recups: 0, finales: 0 };
+      if (hasP1 && !hasP2)  return { total: 1, parciales: 1, recups: 0, finales: 0 };
+      return { total: 2, parciales: 2, recups: 0, finales: 0 };
+    }
+
+    default:
+      return { total: 2, parciales: 2, recups: 0, finales: 0 };
+  }
+}
+
 export function calcularEstadisticas(materias: Materia[]): Estadisticas {
   const total = materias.length;
   let aprobadas = 0;
@@ -276,7 +311,7 @@ export function calcularEstadisticas(materias: Materia[]): Estadisticas {
 
   materias.forEach((m) => {
     const estado = calcularEstado(m, materias);
-    const examenes = examenesRestantesPeorCaso(m, materias);
+    const examenes = examenesRestantesMejorCaso(m, materias);
 
     totalExamenes += examenes.total;
     totalParciales += examenes.parciales;
