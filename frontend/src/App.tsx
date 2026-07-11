@@ -11,7 +11,7 @@
  *   - Agregar la condición de render en <main>.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMaterias } from './hooks/useMaterias';
 import { SaveIndicator } from './components/ui/SaveIndicator';
 import { Dashboard } from './views/Dashboard';
@@ -35,6 +35,50 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 export default function App() {
   const { materias, loading, saveStatus, updateMateria, resetMaterias } = useMaterias();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [serverDown, setServerDown] = useState(false);
+
+  // Heartbeat: ping al servidor cada 5s + detectar desconexión
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/heartbeat');
+        if (!res.ok) throw new Error();
+      } catch {
+        setServerDown(true);
+      }
+    }, 5000);
+
+    // Al cerrar la pestaña, avisar al servidor que se apague
+    const onUnload = () => {
+      navigator.sendBeacon('/api/shutdown');
+    };
+    window.addEventListener('beforeunload', onUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', onUnload);
+    };
+  }, []);
+
+  if (serverDown) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+        <div className="text-center max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-xl">
+          <div className="text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-zinc-100 mb-2">Servidor Desconectado</h2>
+          <p className="text-zinc-400 text-sm mb-6">
+            Se cerró la terminal o el backend dejó de responder. Esta pestaña ya no está sincronizada y se cerrará automáticamente.
+          </p>
+          <button 
+            onClick={() => window.close()} 
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer"
+          >
+            Cerrar Pestaña
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
