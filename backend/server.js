@@ -82,6 +82,20 @@ app.get('/api/datapath', (req, res) => {
   res.json({ path: path.resolve(DATA_FILE) });
 });
 
+// POST /api/shutdown - El frontend avisa que la pestaña se cerró
+app.post('/api/shutdown', (req, res) => {
+  console.log('\n  [INFO] Pestaña del navegador cerrada. Apagando servidor...');
+  res.json({ ok: true });
+  setTimeout(() => process.exit(0), 300);
+});
+
+// GET /api/heartbeat - El frontend hace ping periódico
+let lastHeartbeat = Date.now();
+app.get('/api/heartbeat', (req, res) => {
+  lastHeartbeat = Date.now();
+  res.json({ ok: true });
+});
+
 // Fallback SPA - sirve index.html para cualquier ruta no-API
 app.get('*', (req, res) => {
   const indexPath = path.join(FRONTEND_BUILD, 'index.html');
@@ -130,4 +144,14 @@ app.listen(PORT, () => {
       if (err) console.log(`[INFO] Abre manualmente: ${url}`);
     });
   }, 500);
+
+  // Si no recibe heartbeat del navegador en 15s, apagar servidor
+  setTimeout(() => {
+    setInterval(() => {
+      if (Date.now() - lastHeartbeat > 15000) {
+        console.log('\n  [INFO] Sin señal del navegador. Apagando servidor...');
+        process.exit(0);
+      }
+    }, 5000);
+  }, 10000); // Esperar 10s antes de empezar a chequear
 });
