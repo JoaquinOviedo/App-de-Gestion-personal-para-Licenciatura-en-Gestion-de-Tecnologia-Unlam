@@ -261,6 +261,7 @@ export function MateriaCard({ materia, todasLasMaterias, onUpdate }: MateriaCard
                     onAusenteChange={(v) =>
                       onUpdate(materia.id, { ausenteF1: v, notaF1: null })
                     }
+                    disabled={estado === STATUS.PROMOCIONADA}
                     highlight={getNoteHighlight(materia.notaF1)}
                   />
                   <NoteInput
@@ -271,7 +272,7 @@ export function MateriaCard({ materia, todasLasMaterias, onUpdate }: MateriaCard
                     onAusenteChange={(v) =>
                       onUpdate(materia.id, { ausenteF2: v, notaF2: null })
                     }
-                    disabled={materia.notaF1 === null && !materia.ausenteF1}
+                    disabled={estado === STATUS.PROMOCIONADA || (materia.notaF1 == null && !materia.ausenteF1) || (materia.notaF1 != null && materia.notaF1 >= 4)}
                     highlight={getNoteHighlight(materia.notaF2)}
                   />
                   <NoteInput
@@ -282,7 +283,7 @@ export function MateriaCard({ materia, todasLasMaterias, onUpdate }: MateriaCard
                     onAusenteChange={(v) =>
                       onUpdate(materia.id, { ausenteF3: v, notaF3: null })
                     }
-                    disabled={materia.notaF2 === null && !materia.ausenteF2}
+                    disabled={estado === STATUS.PROMOCIONADA || (materia.notaF2 == null && !materia.ausenteF2) || (materia.notaF2 != null && materia.notaF2 >= 4) || (materia.notaF1 != null && materia.notaF1 >= 4)}
                     highlight={getNoteHighlight(materia.notaF3)}
                   />
                 </div>
