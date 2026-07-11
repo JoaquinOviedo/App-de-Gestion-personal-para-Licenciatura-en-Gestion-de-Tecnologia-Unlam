@@ -1,4 +1,15 @@
 @echo off
+:: Si se pasa el argumento "invisible", saltar el autolanzador
+if "%~1"=="invisible" goto :main
+
+:: Crear un script VBS temporal para relanzar este mismo .bat de forma oculta
+echo Set WshShell = CreateObject("WScript.Shell") > "%temp%\launch_hidden.vbs"
+echo WshShell.Run """%~f0"" invisible", 0, False >> "%temp%\launch_hidden.vbs"
+wscript "%temp%\launch_hidden.vbs"
+del "%temp%\launch_hidden.vbs"
+exit
+
+:main
 title Mi Carrera Tech - Gestor Local
 color 0A
 echo.
